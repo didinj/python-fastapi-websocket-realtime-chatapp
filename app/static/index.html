@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FastAPI WebSocket Chat</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="chat-container">
+      <header>
+        <h1>FastAPI WebSocket Chat</h1>
+        <div class="user">
+          <label>Username</label>
+          <input id="username" placeholder="Type a name…" />
+          <button id="connectBtn">Connect</button>
+          <button id="disconnectBtn" disabled>Disconnect</button>
+        </div>
+      </header>
+
+      <main id="messages" class="messages"></main>
+
+      <footer>
+        <input
+          id="input"
+          placeholder="Write a message and hit Enter…"
+          disabled
+        />
+        <button id="sendBtn" disabled>Send</button>
+      </footer>
+    </div>
+
+    <script>
+      function connect() {
+        const username = usernameInput.value.trim() || "Guest";
+        if (ws) ws.close();
+        ws = new WebSocket(
+          `ws://${location.host}/ws?username=${encodeURIComponent(username)}`
+        );
+
+        ws.addEventListener("open", () => {
+          input.disabled = false;
+          sendBtn.disabled = false;
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          appendMessage("Connected ✔", "system");
+        });
+
+        ws.addEventListener("message", (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "system") {
+              appendMessage(data.message, "system");
+            } else if (data.type === "chat") {
+              appendMessage(`${data.user}: ${data.message}`);
+            } else {
+              appendMessage(event.data);
+            }
+          } catch (e) {
+            appendMessage(event.data);
+          }
+        });
+
+        ws.addEventListener("close", () => {
+          input.disabled = true;
+          sendBtn.disabled = true;
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          appendMessage("Disconnected ✖", "system");
+        });
+
+        ws.addEventListener("error", () => {
+          appendMessage("WebSocket error", "system");
+        });
+      }
+
+      function disconnect() {
+        if (ws) {
+          ws.close();
+        }
+      }
+
+      sendBtn.addEventListener("click", () => {
+        if (ws && input.value.trim()) {
+          ws.send(input.value.trim());
+          input.value = "";
+        }
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          sendBtn.click();
+        }
+      });
+
+      connectBtn.addEventListener("click", connect);
+      disconnectBtn.addEventListener("click", disconnect);
+    </script>
+  </body>
+</html>
